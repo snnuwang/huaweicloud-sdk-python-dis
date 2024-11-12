@@ -87,7 +87,7 @@ class disclient(object):
         self.sk = sk
         self.projectid = projectid
         self.region = region
-        self.xSecrityToken = xSecrityToken;
+        self.xSecrityToken = xSecrityToken
 
     def setUserAgent(self, useragent):
         self._useragent = useragent
