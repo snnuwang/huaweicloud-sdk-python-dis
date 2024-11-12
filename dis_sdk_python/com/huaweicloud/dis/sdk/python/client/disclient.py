@@ -57,6 +57,9 @@ class disclient(object):
     :type projectid: string
     :param projectid: hws project id for the user
 
+    :type xSecrityToken: string
+    :param xSecrityToken: tmp security token
+
     : the user can get the ak/sk/projectid  from the hws,the user can refer https://support.huaweicloud.com/usermanual-dis-sdk-resources-demo1/dis_01_0043.html
     """
 
@@ -64,7 +67,7 @@ class disclient(object):
     USER_AGENT = 'dis-python-sdk-v-' + DIS_SDK_VERSION
     TIME_OUT = 60
 
-    def __init__(self, endpoint, ak, sk, projectid, region, bodySerializeType=''):
+    def __init__(self, endpoint, ak, sk, projectid, region, bodySerializeType='', xSecrityToken=''):
         self.endpoint = endpoint
         if not endpoint.startswith("http"):
             self.endpoint = "https://" + endpoint
@@ -74,15 +77,17 @@ class disclient(object):
         self.projectid = projectid
         self.region = region
         self.bodySerializeType = bodySerializeType
+        self.xSecrityToken = xSecrityToken
         self._timeout = self.TIME_OUT
         self._useragent = self.USER_AGENT
         self.result = []
 
-    def updateAuthInfo(self, ak, sk, projectid, region):
+    def updateAuthInfo(self, ak, sk, projectid, region, xSecrityToken):
         self.ak = ak
         self.sk = sk
         self.projectid = projectid
         self.region = region
+        self.xSecrityToken = xSecrityToken;
 
     def setUserAgent(self, useragent):
         self._useragent = useragent
@@ -110,6 +115,9 @@ class disclient(object):
 
         if userxSecrityToken is not "":
             req.headers["X-Security-Token"] = userxSecrityToken
+
+        if self.xSecrityToken is not "":
+            req.headers["X-Security-Token"] = self.xSecrityToken
 
         if (headers):
             headers.update(req.headers)
@@ -378,7 +386,7 @@ class disclient(object):
         end_list.append(init_list[-count:]) if count != 0 else end_list
         return end_list
 
-    def __Refine_data(self, stream_name, stream_id, records):
+    def __Refine_data(self, stream_name, stream_id, records, ak="", sk="", xSecrityToken=""):
         totalPutRecordsResultEntryList = {}
         totalPutRecordsResultEntryList['failed_record_count'] = 0
         totalPutRecordsResultEntryList['records'] = []
@@ -393,7 +401,7 @@ class disclient(object):
             if retryCount != -1:
                 time.sleep(wait)
                 wait = wait * 2
-            r = self.__sendRecords(stream_name, stream_id, retryPutRecordsRequest)
+            r = self.__sendRecords(stream_name, stream_id, retryPutRecordsRequest, ak, sk, xSecrityToken)
             currentFailed = r.failedRecordCount
             # print("%s: send %s records,failed %s records,retryCount %s" % (
             # streamname, len(retryPutRecordsRequest), currentFailed, retryCount + 1))
@@ -440,10 +448,10 @@ class disclient(object):
         log('{}{}:send {} records,failed {} records'.format(stream_name, stream_id, len(records), Faile_count), 'info')
         return totalPutRecordsResultEntryList
 
-    def putRecords(self, streamname, records):
+    def putRecords(self, streamname, records, ak="", sk="", xSecrityToken=""):
         if not stream_mes.get(streamname):
             try:
-                r = self.describeStream(streamname)
+                r = self.describeStream(streamname, ak=ak, sk=sk, xSecrityToken=xSecrityToken)
                 if r.statusCode == 200:
                     stream_type = r.streamType
                     partitions = len([i for i in r.partitions if i.get('status') == 'ACTIVE'])
@@ -480,12 +488,12 @@ class disclient(object):
                 end_list[i] = end_list[i][len(b):]
         for j in range(0, len(new_records)):
             rangeRecords = new_records[j]
-            r = self.__Refine_data(streamname, "", rangeRecords)
+            r = self.__Refine_data(streamname, "", rangeRecords, ak, sk, xSecrityToken)
             totalPutRecordsResultEntryList['failed_record_count'] += r['failed_record_count']
             totalPutRecordsResultEntryList['records'].extend(r['records'])
         return disrecordresponse.disPutRecordsResponse(200, totalPutRecordsResultEntryList)
 
-    def put_records(self, stream_name, stream_id, records):
+    def put_records(self, stream_name, stream_id, records, ak="", sk="", xSecrityToken=""):
         """
         support authorization scenarios use stream_id
         stream_name is mandatory parameter, can be an empty string.
@@ -500,7 +508,7 @@ class disclient(object):
         totalPutRecordsResultEntryList = {}
         totalPutRecordsResultEntryList['failed_record_count'] = 0
         totalPutRecordsResultEntryList['records'] = []
-        r = self.__Refine_data(stream_name, stream_id, records)
+        r = self.__Refine_data(stream_name, stream_id, records, ak, sk, xSecrityToken)
         totalPutRecordsResultEntryList['failed_record_count'] += r['failed_record_count']
         totalPutRecordsResultEntryList['records'].extend(r['records'])
         return disrecordresponse.disPutRecordsResponse(200, totalPutRecordsResultEntryList)
